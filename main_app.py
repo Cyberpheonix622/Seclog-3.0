@@ -1,3 +1,5 @@
+# main_app.py
+
 import customtkinter as ctk
 import tkinter as tk
 import threading
@@ -17,62 +19,70 @@ class SecurityLogApp(ctk.CTk):
         self.geometry("1100x650")
         self.minsize(900, 500)
 
-        # Initialize the backend log handler
+        # Initialize backend handlers
         self.log_handler = LogHandler()
         self.db_handler = DatabaseHandler()
 
         # --- Data Storage ---
-        self.all_logs = []
         self.filtered_logs = []
 
         # --- Configure Grid Layout ---
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        # --- Create UI Elements by calling functions from ui_components ---
+        # --- Create UI Elements ---
         ui_components.create_sidebar(self, self)
         ui_components.create_main_tabs(self, self)
 
     def search_logs(self):
         """
-        Handles the 'Fetch Logs' button click.
-        Fetches logs in a separate thread to keep the UI responsive.
+        Handles the 'Fetch Logs' button.
+        It now syncs latest logs and then queries the entire database in a thread.
         """
-        self.logs_label.configure(text="🔄 Fetching and filtering logs...")
+        self.logs_label.configure(text="🔄 Syncing latest logs and searching database...")
         self.log_textbox.configure(state="normal")
         self.log_textbox.delete("1.0", tk.END)
-        self.log_textbox.insert("1.0", "Searching logs... this may take a moment.")
+        self.log_textbox.insert("1.0", "This may take a moment...")
         self.log_textbox.configure(state="disabled")
 
         # Get filter criteria from UI elements
         selected_log_type = self.log_type.get()
-        log_types_to_fetch = ["Security", "System", "Application"] if selected_log_type == "All" else [selected_log_type]
-        start_date = self.start_date_entry.get().strip()
-        end_date = self.end_date_entry.get().strip()
-        keyword = self.filter_entry.get().strip()
+        log_sources = ["Security", "System", "Application"] if selected_log_type == "All" else [selected_log_type]
+        start_date = self.start_date_entry.get().strip() or None
+        end_date = self.end_date_entry.get().strip() or None
+        keyword = self.filter_entry.get().strip() or None
 
-        # Run the fetching in a new thread
+        # Run the fetching and querying in a new thread to keep UI responsive
         threading.Thread(
-            target=self._fetch_logs_thread_target,
-            args=(log_types_to_fetch, start_date, end_date, keyword),
+            target=self._sync_and_query_thread,
+            args=(log_sources, start_date, end_date, keyword),
             daemon=True
         ).start()
 
-    def _fetch_logs_thread_target(self, log_types, start_date, end_date, keyword):
-        """Target function for the log fetching thread."""
-        logs, counts = self.log_handler.fetch_logs(log_types, start_date, end_date, keyword)
+    def _sync_and_query_thread(self, log_sources, start_date, end_date, keyword):
+        """
+        Target for the background thread.
+        Step 1: Fetch latest logs from Windows to ensure DB is up to date.
+        Step 2: Query the entire database with the user's filters.
+        """
+        # Step 1: Sync latest logs. We fetch a limited number from each source.
+        # This is a quick operation to catch anything new since the app was opened.
+        print("Syncing latest logs from Windows...")
+        latest_logs, _ = self.log_handler.fetch_logs(log_sources, None, None, None)
+        self.db_handler.insert_logs(latest_logs)
+        
+        # Step 2: Query the database with the user's filters.
+        print("Querying the database...")
+        queried_logs, counts = self.db_handler.query_logs(log_sources, start_date, end_date, keyword)
         
         # Schedule the UI update on the main thread
-        self.after(0, self._update_ui_with_fetched_logs, logs, counts)
+        self.after(0, self._update_ui_with_db_results, queried_logs, counts)
 
-    def _update_ui_with_fetched_logs(self, logs, counts):
-        """Updates the entire UI with new log data. Must be run on the main thread."""
-        self.all_logs = logs
+    def _update_ui_with_db_results(self, logs, counts):
+        """Updates the entire UI with new log data from the database query."""
         self.filtered_logs = logs
-
-        self.db_handler.insert_logs(logs)
         
-        self.logs_label.configure(text=f"Logs Loaded: {len(self.filtered_logs)} entries found")
+        self.logs_label.configure(text=f"Logs Found in Database: {len(self.filtered_logs)} entries")
         
         # Update all parts of the UI
         ui_components.display_logs(self.log_textbox, self.filtered_logs)
@@ -80,6 +90,7 @@ class SecurityLogApp(ctk.CTk):
         ui_components.update_summary_tab(self, self.filtered_logs)
         ui_components.draw_event_graph(self.graph_frame, self.filtered_logs)
 
+    # ... (rest of the methods: start_real_time, stop_real_time, save, reset) ...
     def start_real_time_monitoring(self):
         """Handles the 'Start Real-Time' button click."""
         self.log_handler.start_monitoring(self._real_time_update_callback)
@@ -94,12 +105,13 @@ class SecurityLogApp(ctk.CTk):
         self.stop_button.configure(state="disabled")
         self.logs_label.configure(text="Real-Time Monitoring Stopped.")
 
-    def _real_time_update_callback(self, logs, counts):
-        """Callback function for the monitor to send data back to the UI."""
-        # This function is called from the monitoring thread, so we must
-        # schedule the UI update on the main thread using self.after()
-        self.after(0, self._update_ui_with_fetched_logs, logs, counts)
-
+    def _real_time_update_callback(self, new_logs, counts):
+        """Callback for real-time monitor. Inserts new logs into DB and UI."""
+        self.db_handler.insert_logs(new_logs)
+        # For real-time, we can just prepend the new logs to the current view
+        self.filtered_logs = new_logs + self.filtered_logs
+        self._update_ui_with_db_results(self.filtered_logs, counts)
+        
     def save_filtered_logs(self):
         """Handles the 'Export to CSV' button click."""
         self.log_handler.save_logs_to_csv(self.filtered_logs)
@@ -116,4 +128,4 @@ class SecurityLogApp(ctk.CTk):
         self.log_textbox.delete("1.0", tk.END)
         self.log_textbox.configure(state="disabled")
         
-        self.logs_label.configure(text="Filters reset. Click 'Fetch Logs' to reload.")
+        self.logs_label.configure(text="Filters reset. Click 'Fetch Logs' to search the database.")
