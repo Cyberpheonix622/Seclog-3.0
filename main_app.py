@@ -3,6 +3,7 @@ import tkinter as tk
 import threading
 
 from log_handler import LogHandler
+from modules.database_handler import DatabaseHandler
 import ui_components
 
 class SecurityLogApp(ctk.CTk):
@@ -18,6 +19,7 @@ class SecurityLogApp(ctk.CTk):
 
         # Initialize the backend log handler
         self.log_handler = LogHandler()
+        self.db_handler = DatabaseHandler()
 
         # --- Data Storage ---
         self.all_logs = []
@@ -67,6 +69,8 @@ class SecurityLogApp(ctk.CTk):
         """Updates the entire UI with new log data. Must be run on the main thread."""
         self.all_logs = logs
         self.filtered_logs = logs
+
+        self.db_handler.insert_logs(logs)
         
         self.logs_label.configure(text=f"Logs Loaded: {len(self.filtered_logs)} entries found")
         

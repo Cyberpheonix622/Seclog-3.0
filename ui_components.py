@@ -1,3 +1,5 @@
+# ui_components.py
+
 import customtkinter as ctk
 import tkinter as tk
 from matplotlib.figure import Figure
@@ -74,6 +76,11 @@ def create_main_tabs(parent, app_instance):
     app_instance.logs_label.grid(row=0, column=0, pady=(10, 5))
     app_instance.log_textbox = ctk.CTkTextbox(logs_tab, wrap="none", corner_radius=8, font=("Courier New", 12))
     app_instance.log_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
+    
+    # Add color tags for severity
+    app_instance.log_textbox.tag_config("Info", foreground="#5cb85c") # Green
+    app_instance.log_textbox.tag_config("Warning", foreground="#f0ad4e") # Orange
+    app_instance.log_textbox.tag_config("Critical", foreground="#d9534f") # Red
 
     # --- Summary Tab ---
     summary_tab.grid_columnconfigure((0, 1, 2), weight=1)
@@ -91,15 +98,17 @@ def toggle_theme():
     ctk.set_appearance_mode("Light" if current == "Dark" else "Dark")
 
 def display_logs(textbox, log_list):
-    """Populates the main textbox with log entries."""
+    """Populates the main textbox with log entries, using new normalized keys."""
     textbox.configure(state="normal")
     textbox.delete("1.0", tk.END)
     if not log_list:
         textbox.insert(tk.END, "No logs found matching your criteria.")
     else:
         for log in log_list:
-            line = f"[{log['TimeGenerated']}] {log['SourceName']} (ID {log['EventID']}): {log['Message']}\n"
-            textbox.insert(tk.END, line)
+            # Use the new normalized keys: timestamp, source, event_id, message, severity
+            line = f"[{log.get('timestamp')}] [{log.get('severity', 'Info')}] {log.get('source')} (ID {log.get('event_id')}): {log.get('message')}\n"
+            severity = log.get('severity', 'Info')
+            textbox.insert(tk.END, line, severity)
     textbox.see("1.0") # Scroll to top
     textbox.configure(state="disabled")
 
@@ -111,7 +120,7 @@ def update_summary_cards(app_instance, total_logs_count, counts_by_type):
     app_instance.application_card.configure(text=f"🧩 Application: {counts_by_type.get('Application', 0)}")
 
 def update_summary_tab(app_instance, logs):
-    """Updates the three summary frames with data from the provided logs."""
+    """Updates the three summary frames with data from the provided logs, using new normalized keys."""
     frames = [app_instance.event_id_summary_frame, app_instance.source_summary_frame, app_instance.event_type_summary_frame]
     for frame in frames:
         for widget in frame.winfo_children():
@@ -120,9 +129,10 @@ def update_summary_tab(app_instance, logs):
     if not logs:
         return
 
-    event_ids = Counter(log["EventID"] for log in logs)
-    sources = Counter(log["SourceName"] for log in logs)
-    event_types = Counter(log["EventType"] for log in logs)
+    # Use the new normalized keys
+    event_ids = Counter(log.get("event_id") for log in logs)
+    sources = Counter(log.get("source") for log in logs)
+    event_types = Counter(log.get("event_type") for log in logs)
     
     for eid, count in event_ids.most_common(20):
         label = ctk.CTkLabel(app_instance.event_id_summary_frame, text=f"ID {eid}: {count} events", anchor="w")
@@ -132,53 +142,58 @@ def update_summary_tab(app_instance, logs):
         label = ctk.CTkLabel(app_instance.source_summary_frame, text=f"{source}: {count} events", anchor="w")
         label.pack(fill="x", padx=5, pady=2)
 
-    type_labels = {"1": "Error", "2": "Warning", "4": "Information", "8": "Success Audit", "16": "Failure Audit"}
     for etype, count in event_types.most_common(20):
-        label_text = type_labels.get(etype, f"Type {etype}")
-        label = ctk.CTkLabel(app_instance.event_type_summary_frame, text=f"{label_text}: {count} events", anchor="w")
+        label = ctk.CTkLabel(app_instance.event_type_summary_frame, text=f"{etype}: {count} events", anchor="w")
         label.pack(fill="x", padx=5, pady=2)
 
-
 def draw_event_graph(parent_frame, logs):
-    """Draws the event log bar graph on the dashboard."""
+    """Draws the event log bar graph on the dashboard, using new normalized keys."""
     for widget in parent_frame.winfo_children():
         widget.destroy()
 
     if not logs:
+        ctk.CTkLabel(parent_frame, text="No data to display.").pack(expand=True)
         return
 
-    timestamps = [datetime.strptime(log['TimeGenerated'], "%Y-%m-%d %H:%M:%S") for log in logs if 'TimeGenerated' in log]
-    # Group by hour
-    time_bins = [ts.strftime("%Y-%m-%d %H:00") for ts in timestamps]
-    time_counts = Counter(time_bins)
-    
-    # Sort by time and limit to most recent 24 hours for readability
-    sorted_times = sorted(time_counts.keys())[-24:]
-    counts = [time_counts[t] for t in sorted_times]
+    try:
+        # Use the new normalized key 'timestamp'
+        timestamps = [datetime.strptime(log['timestamp'], "%Y-%m-%d %H:%M:%S") for log in logs if 'timestamp' in log]
+        if not timestamps:
+             ctk.CTkLabel(parent_frame, text="No timestamp data for graph.").pack(expand=True)
+             return
+        
+        time_bins = [ts.strftime("%Y-%m-%d %H:00") for ts in timestamps]
+        time_counts = Counter(time_bins)
+        
+        sorted_times = sorted(time_counts.keys())[-24:]
+        counts = [time_counts[t] for t in sorted_times]
+        short_labels = [t.split(' ')[1] for t in sorted_times]
 
-    fig = Figure(figsize=(8, 4), dpi=100)
-    ax = fig.add_subplot(111)
-    
-    # Use a different color based on theme
-    bar_color = "#4e73df" if ctk.get_appearance_mode() == "Dark" else "#3366cc"
-    ax.bar(sorted_times, counts, color=bar_color)
-    
-    bg_color = "#2b2b2b" if ctk.get_appearance_mode() == "Dark" else "#f0f0f0"
-    text_color = "white" if ctk.get_appearance_mode() == "Dark" else "black"
-    
-    fig.patch.set_facecolor(bg_color)
-    ax.set_facecolor(bg_color)
-    ax.xaxis.label.set_color(text_color)
-    ax.yaxis.label.set_color(text_color)
-    ax.title.set_color(text_color)
-    ax.tick_params(axis='x', colors=text_color, rotation=45)
-    ax.tick_params(axis='y', colors=text_color)
+        fig = Figure(figsize=(8, 4), dpi=100)
+        ax = fig.add_subplot(111)
+        
+        bar_color = "#4e73df" if ctk.get_appearance_mode() == "Dark" else "#3366cc"
+        ax.bar(short_labels, counts, color=bar_color)
+        
+        bg_color = "#2b2b2b" if ctk.get_appearance_mode() == "Dark" else "#f0f0f0"
+        text_color = "white" if ctk.get_appearance_mode() == "Dark" else "black"
+        
+        fig.patch.set_facecolor(bg_color)
+        ax.set_facecolor(bg_color)
+        ax.xaxis.label.set_color(text_color)
+        ax.yaxis.label.set_color(text_color)
+        ax.title.set_color(text_color)
+        ax.tick_params(axis='x', colors=text_color, rotation=45)
+        ax.tick_params(axis='y', colors=text_color)
 
-    ax.set_title("Event Count Over Time (Last 24 Hours)")
-    ax.set_xlabel("Time")
-    ax.set_ylabel("Number of Events")
-    
-    fig.tight_layout()
-    canvas = FigureCanvasTkAgg(fig, master=parent_frame)
-    canvas.draw()
-    canvas.get_tk_widget().pack(fill="both", expand=True, padx=5, pady=5)
+        ax.set_title("Event Count Over Time (Last 24 Hours)")
+        ax.set_xlabel("Time (Hour of Day)")
+        ax.set_ylabel("Number of Events")
+        
+        fig.tight_layout()
+        canvas = FigureCanvasTkAgg(fig, master=parent_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True, padx=5, pady=5)
+    except Exception as e:
+        print(f"Error drawing graph: {e}")
+        ctk.CTkLabel(parent_frame, text=f"Could not draw graph:\n{e}").pack(expand=True)

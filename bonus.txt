@@ -1,0 +1,21 @@
+Seclog/
+│
+├── run.py
+├── main_app.py
+├── ui_components.py
+├── log_handler.py
+│
+├── modules/
+│   ├── database_handler.py
+│   ├── alert_manager.py
+│   ├── rule_engine.py
+│   ├── correlation_engine.py
+│   └── user_auth.py
+│
+├── data/
+│   ├── seclog.db
+│   └── logs_archive/
+│
+└── assets/
+    ├── icons/
+    └── sounds/
