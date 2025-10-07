@@ -28,8 +28,6 @@ class SecurityLogApp(ctk.CTk):
         self.grid_rowconfigure(0, weight=1)
 
         # --- Create UI Elements by calling functions from ui_components ---
-        # The 'self' is passed so the component functions can attach widgets
-        # (like entry fields and buttons) directly to the app instance.
         ui_components.create_sidebar(self, self)
         ui_components.create_main_tabs(self, self)
 
