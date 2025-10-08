@@ -77,10 +77,9 @@ def create_main_tabs(parent, app_instance):
     app_instance.log_textbox = ctk.CTkTextbox(logs_tab, wrap="none", corner_radius=8, font=("Courier New", 12))
     app_instance.log_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
     
-    # Add color tags for severity
-    app_instance.log_textbox.tag_config("Info", foreground="#5cb85c") # Green
-    app_instance.log_textbox.tag_config("Warning", foreground="#f0ad4e") # Orange
-    app_instance.log_textbox.tag_config("Critical", foreground="#d9534f") # Red
+    app_instance.log_textbox.tag_config("Info", foreground="#5cb85c")
+    app_instance.log_textbox.tag_config("Warning", foreground="#f0ad4e")
+    app_instance.log_textbox.tag_config("Critical", foreground="#d9534f")
 
     # --- Summary Tab ---
     summary_tab.grid_columnconfigure((0, 1, 2), weight=1)
@@ -98,18 +97,17 @@ def toggle_theme():
     ctk.set_appearance_mode("Light" if current == "Dark" else "Dark")
 
 def display_logs(textbox, log_list):
-    """Populates the main textbox with log entries, using new normalized keys."""
+    """Populates the main textbox with log entries."""
     textbox.configure(state="normal")
     textbox.delete("1.0", tk.END)
     if not log_list:
         textbox.insert(tk.END, "No logs found matching your criteria.")
     else:
         for log in log_list:
-            # Use the new normalized keys: timestamp, source, event_id, message, severity
             line = f"[{log.get('timestamp')}] [{log.get('severity', 'Info')}] {log.get('source')} (ID {log.get('event_id')}): {log.get('message')}\n"
             severity = log.get('severity', 'Info')
             textbox.insert(tk.END, line, severity)
-    textbox.see("1.0") # Scroll to top
+    textbox.see("1.0")
     textbox.configure(state="disabled")
 
 def update_summary_cards(app_instance, total_logs_count, counts_by_type):
@@ -120,16 +118,17 @@ def update_summary_cards(app_instance, total_logs_count, counts_by_type):
     app_instance.application_card.configure(text=f"🧩 Application: {counts_by_type.get('Application', 0)}")
 
 def update_summary_tab(app_instance, logs):
-    """Updates the three summary frames with data from the provided logs, using new normalized keys."""
+    """Updates the three summary frames with data from the provided logs."""
     frames = [app_instance.event_id_summary_frame, app_instance.source_summary_frame, app_instance.event_type_summary_frame]
     for frame in frames:
+        # 🔹 THE FIX: Forget the widget from the layout manager before destroying it.
         for widget in frame.winfo_children():
+            widget.pack_forget()
             widget.destroy()
 
     if not logs:
         return
 
-    # Use the new normalized keys
     event_ids = Counter(log.get("event_id") for log in logs)
     sources = Counter(log.get("source") for log in logs)
     event_types = Counter(log.get("event_type") for log in logs)
@@ -146,8 +145,9 @@ def update_summary_tab(app_instance, logs):
         label = ctk.CTkLabel(app_instance.event_type_summary_frame, text=f"{etype}: {count} events", anchor="w")
         label.pack(fill="x", padx=5, pady=2)
 
+
 def draw_event_graph(parent_frame, logs):
-    """Draws the event log bar graph on the dashboard, using new normalized keys."""
+    """Draws the event log bar graph on the dashboard."""
     for widget in parent_frame.winfo_children():
         widget.destroy()
 
@@ -156,7 +156,6 @@ def draw_event_graph(parent_frame, logs):
         return
 
     try:
-        # Use the new normalized key 'timestamp'
         timestamps = [datetime.strptime(log['timestamp'], "%Y-%m-%d %H:%M:%S") for log in logs if 'timestamp' in log]
         if not timestamps:
              ctk.CTkLabel(parent_frame, text="No timestamp data for graph.").pack(expand=True)
