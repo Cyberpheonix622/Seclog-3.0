@@ -1,14 +1,14 @@
 [
   {
     "rule_name": "Multiple Windows Failed Logins",
-    "description": "Triggers when 5 or more failed login attempts (Event ID 4625) occur within a 5-minute window.",
+    "description": "Triggers when 2 or more failed login attempts (Event ID 4625) occur within a 5-minute window.",
     "enabled": true,
     "logfile": "Security",
     "conditions": {
       "event_id": "4625"
     },
     "aggregation": {
-      "threshold": 5,
+      "threshold": 2,
       "time_window_minutes": 5
     }
   },

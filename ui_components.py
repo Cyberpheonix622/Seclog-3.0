@@ -2,13 +2,15 @@
 
 import customtkinter as ctk
 import tkinter as tk
+# ... (rest of imports are the same) ...
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from collections import Counter
 from datetime import datetime
 
-# ... (create_sidebar function is unchanged) ...
+
 def create_sidebar(parent, app_instance):
+    # ... (This function is unchanged) ...
     sidebar = ctk.CTkFrame(parent, width=220, corner_radius=0)
     sidebar.grid(row=0, column=0, sticky="ns")
     sidebar.grid_rowconfigure(9, weight=1)
@@ -30,96 +32,137 @@ def create_sidebar(parent, app_instance):
     ctk.CTkButton(sidebar, text="🔄 Reset Filters", command=app_instance.reset_filters, height=40).grid(row=8, column=0, padx=20, pady=10, sticky="ew")
     ctk.CTkButton(sidebar, text="💾 Export to CSV", command=app_instance.save_filtered_logs, height=40).grid(row=9, column=0, padx=20, pady=10, sticky="ew")
     ctk.CTkButton(sidebar, text="🌓 Toggle Theme", command=toggle_theme, height=40).grid(row=12, column=0, padx=20, pady=10, sticky="ew")
-    ctk.CTkLabel(sidebar, text="v1.1", font=ctk.CTkFont(size=12, slant="italic")).grid(row=17, column=0, pady=(10, 10))
+    ctk.CTkLabel(sidebar, text="v1.2", font=ctk.CTkFont(size=12, slant="italic")).grid(row=17, column=0, pady=(10, 10))
+
 
 def create_main_tabs(parent, app_instance):
-    """Creates the main tab view and all widgets within the tabs."""
     tabs = ctk.CTkTabview(parent, corner_radius=10)
     tabs.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
     
-    dashboard_tab = tabs.add("Dashboard")
-    logs_tab = tabs.add("Logs")
-    summary_tab = tabs.add("Summary")
-    alerts_tab = tabs.add("Alerts") # 👈 **CHANGE: Add new Alerts tab**
+    tabs.add("Dashboard")
+    tabs.add("Logs")
+    tabs.add("Summary")
+    tabs.add("Alerts")
+    incidents_tab = tabs.add("Incidents") # 👈 Add new Incidents tab
 
-    # --- Dashboard Tab ---
-    # ... (this section is unchanged) ...
-    dashboard_tab.grid_columnconfigure((0, 1, 2), weight=1)
-    dashboard_tab.grid_rowconfigure(2, weight=1)
-    app_instance.total_logs_card = ctk.CTkLabel(dashboard_tab, text="📊 Total Logs: 0", font=ctk.CTkFont(size=16, weight="bold"))
+    # --- Setup all tab content ---
+    setup_dashboard_tab(tabs.tab("Dashboard"), app_instance)
+    setup_logs_tab(tabs.tab("Logs"), app_instance)
+    setup_summary_tab(tabs.tab("Summary"), app_instance)
+    setup_alerts_tab(tabs.tab("Alerts"), app_instance)
+    setup_incidents_tab(incidents_tab, app_instance) # 👈 Setup the new tab
+
+
+def setup_dashboard_tab(tab, app_instance):
+    # ... (This logic is unchanged, just moved into its own function) ...
+    tab.grid_columnconfigure((0, 1, 2), weight=1)
+    tab.grid_rowconfigure(2, weight=1)
+    app_instance.total_logs_card = ctk.CTkLabel(tab, text="📊 Total Logs: 0", font=ctk.CTkFont(size=16, weight="bold"))
     app_instance.total_logs_card.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
-    app_instance.security_card = ctk.CTkLabel(dashboard_tab, text="🔐 Security: 0", font=ctk.CTkFont(size=14))
+    app_instance.security_card = ctk.CTkLabel(tab, text="🔐 Security: 0", font=ctk.CTkFont(size=14))
     app_instance.security_card.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
-    app_instance.system_card = ctk.CTkLabel(dashboard_tab, text="⚙️ System: 0", font=ctk.CTkFont(size=14))
+    app_instance.system_card = ctk.CTkLabel(tab, text="⚙️ System: 0", font=ctk.CTkFont(size=14))
     app_instance.system_card.grid(row=0, column=2, padx=10, pady=10, sticky="ew")
-    app_instance.application_card = ctk.CTkLabel(dashboard_tab, text="🧩 Application: 0", font=ctk.CTkFont(size=14))
+    app_instance.application_card = ctk.CTkLabel(tab, text="🧩 Application: 0", font=ctk.CTkFont(size=14))
     app_instance.application_card.grid(row=1, column=0, columnspan=3, padx=10, pady=(0, 10), sticky="ew")
-    app_instance.graph_frame = ctk.CTkFrame(dashboard_tab, height=250)
+    app_instance.graph_frame = ctk.CTkFrame(tab, height=250)
     app_instance.graph_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=(5, 10), sticky="nsew")
 
-    # --- Logs Tab ---
-    # ... (this section is unchanged) ...
-    logs_tab.grid_columnconfigure(0, weight=1)
-    logs_tab.grid_rowconfigure(1, weight=1)
-    app_instance.logs_label = ctk.CTkLabel(logs_tab, text="Click 'Fetch Logs' to begin", font=ctk.CTkFont(size=18, weight="bold"))
+def setup_logs_tab(tab, app_instance):
+    # ... (This logic is unchanged) ...
+    tab.grid_columnconfigure(0, weight=1)
+    tab.grid_rowconfigure(1, weight=1)
+    app_instance.logs_label = ctk.CTkLabel(tab, text="Click 'Fetch Logs' to begin", font=ctk.CTkFont(size=18, weight="bold"))
     app_instance.logs_label.grid(row=0, column=0, pady=(10, 5))
-    app_instance.log_textbox = ctk.CTkTextbox(logs_tab, wrap="none", corner_radius=8, font=("Courier New", 12))
+    app_instance.log_textbox = ctk.CTkTextbox(tab, wrap="none", corner_radius=8, font=("Courier New", 12))
     app_instance.log_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
     app_instance.log_textbox.tag_config("Info", foreground="#5cb85c")
     app_instance.log_textbox.tag_config("Warning", foreground="#f0ad4e")
     app_instance.log_textbox.tag_config("Critical", foreground="#d9534f")
 
-    # --- Summary Tab ---
-    # ... (this section is unchanged) ...
-    summary_tab.grid_columnconfigure((0, 1, 2), weight=1)
-    summary_tab.grid_rowconfigure(0, weight=1)
-    app_instance.event_id_summary_frame = ctk.CTkScrollableFrame(summary_tab, label_text="Event ID Summary")
+def setup_summary_tab(tab, app_instance):
+    # ... (This logic is unchanged) ...
+    tab.grid_columnconfigure((0, 1, 2), weight=1)
+    tab.grid_rowconfigure(0, weight=1)
+    app_instance.event_id_summary_frame = ctk.CTkScrollableFrame(tab, label_text="Event ID Summary")
     app_instance.event_id_summary_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-    app_instance.source_summary_frame = ctk.CTkScrollableFrame(summary_tab, label_text="Source Summary")
+    app_instance.source_summary_frame = ctk.CTkScrollableFrame(tab, label_text="Source Summary")
     app_instance.source_summary_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
-    app_instance.event_type_summary_frame = ctk.CTkScrollableFrame(summary_tab, label_text="Event Type Summary")
+    app_instance.event_type_summary_frame = ctk.CTkScrollableFrame(tab, label_text="Event Type Summary")
     app_instance.event_type_summary_frame.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
 
-    # --- Alerts Tab ---
-    # 👈 **CHANGE: Define the content of the new Alerts tab**
-    alerts_tab.grid_columnconfigure(0, weight=1)
-    alerts_tab.grid_rowconfigure(0, weight=1)
-    app_instance.alerts_frame = ctk.CTkScrollableFrame(alerts_tab, label_text="Triggered Alerts")
+def setup_alerts_tab(tab, app_instance):
+    tab.grid_columnconfigure(0, weight=1)
+    tab.grid_rowconfigure(0, weight=1)
+    app_instance.alerts_frame = ctk.CTkScrollableFrame(tab, label_text="Triggered Alerts")
     app_instance.alerts_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-# 🔹 NEW FUNCTION: To display alerts in the UI 🔹
-def display_alerts(alerts_frame, alerts_list):
-    """Clears and populates the alerts frame with the latest alerts."""
-    # Clear old alert widgets
+def setup_incidents_tab(tab, app_instance):
+    # 👈 Setup the new incidents tab
+    tab.grid_columnconfigure(0, weight=1)
+    tab.grid_rowconfigure(0, weight=1)
+    app_instance.incidents_frame = ctk.CTkScrollableFrame(tab, label_text="Managed Incidents")
+    app_instance.incidents_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+
+def display_alerts(app_instance, alerts_list):
+    alerts_frame = app_instance.alerts_frame
     for widget in alerts_frame.winfo_children():
         widget.destroy()
-
     if not alerts_list:
         ctk.CTkLabel(alerts_frame, text="No alerts triggered.").pack(pady=10)
         return
-
-    # Display new alerts, newest first
     for alert in reversed(alerts_list):
         alert_item_frame = ctk.CTkFrame(alerts_frame, border_width=1, border_color="red")
         alert_item_frame.pack(fill="x", expand=True, padx=5, pady=5)
+        
+        info_frame = ctk.CTkFrame(alert_item_frame)
+        info_frame.pack(side="left", fill="x", expand=True, padx=10, pady=5)
 
         rule_name = alert.get('rule_name', 'Unknown Rule')
-        trigger_time = alert.get('trigger_time', 'Unknown Time')
-        description = alert.get('description', 'No description.')
-        count = alert.get('count', 0)
-        threshold = alert.get('threshold', 0)
+        ctk.CTkLabel(info_frame, text=f"🚨 {rule_name}", font=ctk.CTkFont(weight="bold")).pack(anchor="w")
+        ctk.CTkLabel(info_frame, text=f"Time: {alert.get('trigger_time', 'N/A')}").pack(anchor="w")
+        
+        # 👈 Add "Create Incident" button
+        ctk.CTkButton(alert_item_frame, text="Create Incident", 
+                      command=lambda a=alert: app_instance.create_incident_from_alert(a)).pack(side="right", padx=10)
 
-        title_label = ctk.CTkLabel(alert_item_frame, text=f"🚨 {rule_name}", font=ctk.CTkFont(weight="bold"))
-        title_label.pack(anchor="w", padx=10, pady=(5, 0))
 
-        time_label = ctk.CTkLabel(alert_item_frame, text=f"Time: {trigger_time}")
-        time_label.pack(anchor="w", padx=10)
+# 🔹 NEW FUNCTION: To display incidents in the UI 🔹
+def display_incidents(app_instance, incidents_list):
+    incidents_frame = app_instance.incidents_frame
+    for widget in incidents_frame.winfo_children():
+        widget.destroy()
 
-        desc_label = ctk.CTkLabel(alert_item_frame, text=f"Details: {description}", wraplength=500, justify="left")
-        desc_label.pack(anchor="w", padx=10)
+    if not incidents_list:
+        ctk.CTkLabel(incidents_frame, text="No incidents created.").pack(pady=10)
+        return
 
-        count_label = ctk.CTkLabel(alert_item_frame, text=f"Events Found: {count} (Threshold was {threshold})")
-        count_label.pack(anchor="w", padx=10, pady=(0, 5))
+    status_colors = {"Open": "red", "Acknowledged": "orange", "Closed": "green"}
+
+    for incident in incidents_list:
+        incident_id = incident.get('id')
+        status = incident.get('status', 'Open')
+        
+        item_frame = ctk.CTkFrame(incidents_frame, border_width=1, border_color=status_colors.get(status, "gray"))
+        item_frame.pack(fill="x", expand=True, padx=5, pady=5)
+
+        info_frame = ctk.CTkFrame(item_frame)
+        info_frame.pack(side="left", fill="x", expand=True, padx=10, pady=5)
+        
+        ctk.CTkLabel(info_frame, text=f"Incident #{incident_id}: {incident.get('rule_name')}", font=ctk.CTkFont(weight="bold")).pack(anchor="w")
+        ctk.CTkLabel(info_frame, text=f"Created: {incident.get('trigger_time')}", text_color="gray").pack(anchor="w")
+        ctk.CTkLabel(info_frame, text=f"Status: {status}").pack(anchor="w")
+
+        btn_frame = ctk.CTkFrame(item_frame)
+        btn_frame.pack(side="right", padx=10)
+        
+        if status == "Open":
+            ctk.CTkButton(btn_frame, text="Acknowledge", width=100,
+                          command=lambda i=incident_id: app_instance.update_incident_status(i, "Acknowledged")).pack(pady=2)
+        if status == "Acknowledged":
+            ctk.CTkButton(btn_frame, text="Close Incident", width=100,
+                          command=lambda i=incident_id: app_instance.update_incident_status(i, "Closed")).pack(pady=2)
 
 
 # ... (rest of the file is unchanged) ...
