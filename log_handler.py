@@ -12,17 +12,12 @@ import pywintypes
 from modules.log_normalizer import LogNormalizer
 
 class LogHandler:
-    """
-    Handles fetching, monitoring, normalizing, and saving Windows Event Logs
-    using the direct win32evtlog API for improved stability.
-    """
     def __init__(self):
         self.monitoring = False
         self.monitor_thread = None
         self.normalizer = LogNormalizer()
 
     def fetch_logs(self, log_types, start_date_str, end_date_str, keyword):
-        # ... (This method is unchanged) ...
         all_logs = []
         counts = Counter()
         start_dt = datetime.strptime(start_date_str, "%Y-%m-%d") if start_date_str else None
@@ -61,57 +56,38 @@ class LogHandler:
             return [], Counter()
 
     def start_monitoring(self, update_callback):
-        # ... (real-time monitoring start) ...
         if self.monitoring: return
         self.monitoring = True
         self.monitor_thread = threading.Thread(target=self._monitor_loop, args=(update_callback,), daemon=True)
         self.monitor_thread.start()
 
     def stop_monitoring(self):
-        # ... (real-time monitoring stop) ...
         self.monitoring = False
 
-    # handle log rotation and clearing
     def _monitor_loop(self, update_callback):
-        """Polls for new event log records with robust error handling for log rotation."""
         last_record_numbers = {}
         log_files = ["Security", "System", "Application"]
-        
         while self.monitoring:
             new_logs = []
             counts = Counter()
-            
             for log_file in log_files:
                 log_handle = None
                 try:
                     log_handle = win32evtlog.OpenEventLog(None, log_file)
                     total_records = win32evtlog.GetNumberOfEventLogRecords(log_handle)
-                    
-                    # Get the last record number we processed, default to the current total
                     last_seen_num = last_record_numbers.get(log_file, total_records)
-
                     if total_records > last_seen_num:
                         oldest_record_num = win32evtlog.GetOldestEventLogRecord(log_handle)
-                        
-                        # Determine where to start reading from.
                         start_from_num = last_seen_num
-                        
-                        # If our last seen record number is now gone (due to log wrapping/clearing),
-                        # start from the oldest available record to avoid errors.
                         if start_from_num < oldest_record_num:
                             start_from_num = oldest_record_num
-                        
-                        # We can only seek if we have a valid starting point.
                         if start_from_num > 0:
                             flags = win32evtlog.EVENTLOG_FORWARDS_READ | win32evtlog.EVENTLOG_SEEK_READ
                             events = win32evtlog.ReadEventLog(log_handle, flags, start_from_num)
-                            
-                            # Filter out records we have already seen in previous loops
                             events_to_process = [e for e in events if e.RecordNumber > last_seen_num]
-                        else: # The log was likely empty, read everything
+                        else:
                              flags = win32evtlog.EVENTLOG_FORWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
                              events_to_process = win32evtlog.ReadEventLog(log_handle, flags, 0)
-
                         for ev_obj in events_to_process:
                             message = win32evtlogutil.SafeFormatMessage(ev_obj, log_file)
                             record = {
@@ -122,31 +98,22 @@ class LogHandler:
                             normalized_record = self.normalizer.normalize("windows", record)
                             new_logs.append(normalized_record)
                             counts[log_file] += 1
-                    
-                    # Update the last seen number to the new total for the next cycle
                     last_record_numbers[log_file] = total_records
-                
                 except Exception as e:
                     print(f"Error processing '{log_file}' in monitor loop: {e}")
-                
                 finally:
                     if log_handle:
                         win32evtlog.CloseEventLog(log_handle)
-
             if new_logs:
                 new_logs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
                 update_callback(new_logs, counts)
-            
             time.sleep(3)
 
     def save_logs_to_csv(self, logs_to_save):
-        # ... (Saves logs to CSV files) ...
         if not logs_to_save:
             messagebox.showinfo("Export", "No logs to export.")
             return
-        filepath = filedialog.asksaveasfilename(
-            defaultextension=".csv", filetypes=[("CSV files", "*.csv"), ("All files", "*.*")], title="Save Logs As..."
-        )
+        filepath = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv"), ("All files", "*.*")], title="Save Logs As...")
         if not filepath: return
         headers = ["timestamp", "logfile", "source", "event_id", "event_type", "severity", "message"]
         try:

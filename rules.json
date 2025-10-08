@@ -1,14 +1,14 @@
 [
   {
     "rule_name": "Multiple Windows Failed Logins",
-    "description": "Triggers when 2 or more failed login attempts (Event ID 4625) occur within a 5-minute window.",
+    "description": "Triggers when 3 or more failed login attempts (Event ID 4625) occur within a 5-minute window.",
     "enabled": true,
     "logfile": "Security",
     "conditions": {
       "event_id": "4625"
     },
     "aggregation": {
-      "threshold": 2,
+      "threshold": 3,
       "time_window_minutes": 5
     }
   },
@@ -38,5 +38,45 @@
       "threshold": 1,
       "time_window_minutes": 10
     }
+  },
+  {
+    "rule_name": "Security Log Was Cleared",
+    "description": "Alerts when the Windows Security Log is cleared (Event ID 1102), which can be a sign of an intruder covering their tracks.",
+    "enabled": true,
+    "logfile": "Security",
+    "conditions": {
+      "event_id": "1102"
+    },
+    "aggregation": {
+      "threshold": 1,
+      "time_window_minutes": 1
+    }
+  },
+  {
+    "rule_name": "Potential Brute-Force and Successful Logon",
+    "type": "correlation",
+    "enabled": true,
+    "description": "Detects multiple failed logins followed by a successful login for the same account.",
+    "time_window_minutes": 10,
+    "steps": [
+      {
+        "step": 1,
+        "description": "At least 3 failed logins (ID 4625).",
+        "logfile": "Security",
+        "conditions": {
+          "event_id": "4625"
+        },
+        "threshold": 3
+      },
+      {
+        "step": 2,
+        "description": "Followed by 1 successful login (ID 4624).",
+        "logfile": "Security",
+        "conditions": {
+          "event_id": "4624"
+        },
+        "threshold": 1
+      }
+    ]
   }
 ]
