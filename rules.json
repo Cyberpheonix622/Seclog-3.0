@@ -1,0 +1,42 @@
+[
+  {
+    "rule_name": "Multiple Windows Failed Logins",
+    "description": "Triggers when 5 or more failed login attempts (Event ID 4625) occur within a 5-minute window.",
+    "enabled": true,
+    "logfile": "Security",
+    "conditions": {
+      "event_id": "4625"
+    },
+    "aggregation": {
+      "threshold": 5,
+      "time_window_minutes": 5
+    }
+  },
+  {
+    "rule_name": "User Account Locked",
+    "description": "Triggers when a user account is locked out (Event ID 4740).",
+    "enabled": true,
+    "logfile": "Security",
+    "conditions": {
+      "event_id": "4740"
+    },
+    "aggregation": {
+      "threshold": 1,
+      "time_window_minutes": 1
+    }
+  },
+  {
+    "rule_name": "Software Installation",
+    "description": "Triggers when new software is installed (Event ID 11707).",
+    "enabled": true,
+    "logfile": "Application",
+    "conditions": {
+      "event_id": "11707",
+      "source": "MsiInstaller"
+    },
+    "aggregation": {
+      "threshold": 1,
+      "time_window_minutes": 10
+    }
+  }
+]
