@@ -2,15 +2,66 @@
 
 import customtkinter as ctk
 import tkinter as tk
-# ... (rest of imports are the same) ...
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from collections import Counter
 from datetime import datetime
 
+class LoginWindow(ctk.CTkToplevel):
+    """
+    A separate top-level window for user login.
+    """
+    def __init__(self, master, auth_instance, on_success_callback):
+        super().__init__(master)
 
+        self.auth = auth_instance
+        self.on_success = on_success_callback
+        
+        self.title("SecLog - Login")
+        self.geometry("350x300")
+        self.transient(master) # Keep login window on top of the main app
+        self.grab_set() # Modal behavior: block interaction with the main window
+        self.protocol("WM_DELETE_WINDOW", self._on_closing)
+
+        self.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(self, text="SecLog Authentication", font=ctk.CTkFont(size=20, weight="bold")).grid(row=0, column=0, pady=(20, 15))
+
+        self.username_entry = ctk.CTkEntry(self, placeholder_text="Username", width=250)
+        self.username_entry.grid(row=1, column=0, pady=10)
+
+        self.password_entry = ctk.CTkEntry(self, placeholder_text="Password", show="*", width=250)
+        self.password_entry.grid(row=2, column=0, pady=10)
+        self.password_entry.bind("<Return>", self._login_event)
+
+        self.login_button = ctk.CTkButton(self, text="Login", command=self._login_event, width=250, height=40)
+        self.login_button.grid(row=3, column=0, pady=20)
+
+        self.status_label = ctk.CTkLabel(self, text="", text_color="red")
+        self.status_label.grid(row=4, column=0, pady=(0, 10))
+        
+        # Center the window
+        self.after(100, lambda: self.geometry(f"350x300+{master.winfo_screenwidth()//2-175}+{master.winfo_screenheight()//2-150}"))
+
+    def _login_event(self, event=None):
+        """Handles the login button click or Enter key press."""
+        username = self.username_entry.get()
+        password = self.password_entry.get()
+
+        if self.auth.check_password(username, password):
+            print("Login successful!")
+            self.destroy() # Close the login window
+            self.on_success() # Call the success callback
+        else:
+            self.status_label.configure(text="Invalid username or password.")
+
+    def _on_closing(self):
+        """Handles the event when the login window is closed via the 'X' button."""
+        print("Login cancelled by user.")
+        self.master.destroy() # Close the entire application
+
+# ... (The rest of the file: create_sidebar, create_main_tabs, etc., is unchanged) ...
 def create_sidebar(parent, app_instance):
-    # ... (This function is unchanged) ...
     sidebar = ctk.CTkFrame(parent, width=220, corner_radius=0)
     sidebar.grid(row=0, column=0, sticky="ns")
     sidebar.grid_rowconfigure(9, weight=1)
@@ -34,27 +85,21 @@ def create_sidebar(parent, app_instance):
     ctk.CTkButton(sidebar, text="🌓 Toggle Theme", command=toggle_theme, height=40).grid(row=12, column=0, padx=20, pady=10, sticky="ew")
     ctk.CTkLabel(sidebar, text="v1.2", font=ctk.CTkFont(size=12, slant="italic")).grid(row=17, column=0, pady=(10, 10))
 
-
 def create_main_tabs(parent, app_instance):
     tabs = ctk.CTkTabview(parent, corner_radius=10)
     tabs.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
-    
     tabs.add("Dashboard")
     tabs.add("Logs")
     tabs.add("Summary")
     tabs.add("Alerts")
-    incidents_tab = tabs.add("Incidents") # 👈 Add new Incidents tab
-
-    # --- Setup all tab content ---
+    incidents_tab = tabs.add("Incidents")
     setup_dashboard_tab(tabs.tab("Dashboard"), app_instance)
     setup_logs_tab(tabs.tab("Logs"), app_instance)
     setup_summary_tab(tabs.tab("Summary"), app_instance)
     setup_alerts_tab(tabs.tab("Alerts"), app_instance)
-    setup_incidents_tab(incidents_tab, app_instance) # 👈 Setup the new tab
-
+    setup_incidents_tab(incidents_tab, app_instance)
 
 def setup_dashboard_tab(tab, app_instance):
-    # ... (This logic is unchanged, just moved into its own function) ...
     tab.grid_columnconfigure((0, 1, 2), weight=1)
     tab.grid_rowconfigure(2, weight=1)
     app_instance.total_logs_card = ctk.CTkLabel(tab, text="📊 Total Logs: 0", font=ctk.CTkFont(size=16, weight="bold"))
@@ -69,7 +114,6 @@ def setup_dashboard_tab(tab, app_instance):
     app_instance.graph_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=(5, 10), sticky="nsew")
 
 def setup_logs_tab(tab, app_instance):
-    # ... (This logic is unchanged) ...
     tab.grid_columnconfigure(0, weight=1)
     tab.grid_rowconfigure(1, weight=1)
     app_instance.logs_label = ctk.CTkLabel(tab, text="Click 'Fetch Logs' to begin", font=ctk.CTkFont(size=18, weight="bold"))
@@ -81,7 +125,6 @@ def setup_logs_tab(tab, app_instance):
     app_instance.log_textbox.tag_config("Critical", foreground="#d9534f")
 
 def setup_summary_tab(tab, app_instance):
-    # ... (This logic is unchanged) ...
     tab.grid_columnconfigure((0, 1, 2), weight=1)
     tab.grid_rowconfigure(0, weight=1)
     app_instance.event_id_summary_frame = ctk.CTkScrollableFrame(tab, label_text="Event ID Summary")
@@ -98,74 +141,51 @@ def setup_alerts_tab(tab, app_instance):
     app_instance.alerts_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
 def setup_incidents_tab(tab, app_instance):
-    # 👈 Setup the new incidents tab
     tab.grid_columnconfigure(0, weight=1)
     tab.grid_rowconfigure(0, weight=1)
     app_instance.incidents_frame = ctk.CTkScrollableFrame(tab, label_text="Managed Incidents")
     app_instance.incidents_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-
 def display_alerts(app_instance, alerts_list):
     alerts_frame = app_instance.alerts_frame
-    for widget in alerts_frame.winfo_children():
-        widget.destroy()
+    for widget in alerts_frame.winfo_children(): widget.destroy()
     if not alerts_list:
         ctk.CTkLabel(alerts_frame, text="No alerts triggered.").pack(pady=10)
         return
     for alert in reversed(alerts_list):
         alert_item_frame = ctk.CTkFrame(alerts_frame, border_width=1, border_color="red")
         alert_item_frame.pack(fill="x", expand=True, padx=5, pady=5)
-        
         info_frame = ctk.CTkFrame(alert_item_frame)
         info_frame.pack(side="left", fill="x", expand=True, padx=10, pady=5)
-
         rule_name = alert.get('rule_name', 'Unknown Rule')
         ctk.CTkLabel(info_frame, text=f"🚨 {rule_name}", font=ctk.CTkFont(weight="bold")).pack(anchor="w")
         ctk.CTkLabel(info_frame, text=f"Time: {alert.get('trigger_time', 'N/A')}").pack(anchor="w")
-        
-        # 👈 Add "Create Incident" button
-        ctk.CTkButton(alert_item_frame, text="Create Incident", 
-                      command=lambda a=alert: app_instance.create_incident_from_alert(a)).pack(side="right", padx=10)
+        ctk.CTkButton(alert_item_frame, text="Create Incident", command=lambda a=alert: app_instance.create_incident_from_alert(a)).pack(side="right", padx=10)
 
-
-# 🔹 NEW FUNCTION: To display incidents in the UI 🔹
 def display_incidents(app_instance, incidents_list):
     incidents_frame = app_instance.incidents_frame
-    for widget in incidents_frame.winfo_children():
-        widget.destroy()
-
+    for widget in incidents_frame.winfo_children(): widget.destroy()
     if not incidents_list:
         ctk.CTkLabel(incidents_frame, text="No incidents created.").pack(pady=10)
         return
-
     status_colors = {"Open": "red", "Acknowledged": "orange", "Closed": "green"}
-
     for incident in incidents_list:
         incident_id = incident.get('id')
         status = incident.get('status', 'Open')
-        
         item_frame = ctk.CTkFrame(incidents_frame, border_width=1, border_color=status_colors.get(status, "gray"))
         item_frame.pack(fill="x", expand=True, padx=5, pady=5)
-
         info_frame = ctk.CTkFrame(item_frame)
         info_frame.pack(side="left", fill="x", expand=True, padx=10, pady=5)
-        
         ctk.CTkLabel(info_frame, text=f"Incident #{incident_id}: {incident.get('rule_name')}", font=ctk.CTkFont(weight="bold")).pack(anchor="w")
         ctk.CTkLabel(info_frame, text=f"Created: {incident.get('trigger_time')}", text_color="gray").pack(anchor="w")
         ctk.CTkLabel(info_frame, text=f"Status: {status}").pack(anchor="w")
-
         btn_frame = ctk.CTkFrame(item_frame)
         btn_frame.pack(side="right", padx=10)
-        
         if status == "Open":
-            ctk.CTkButton(btn_frame, text="Acknowledge", width=100,
-                          command=lambda i=incident_id: app_instance.update_incident_status(i, "Acknowledged")).pack(pady=2)
+            ctk.CTkButton(btn_frame, text="Acknowledge", width=100, command=lambda i=incident_id: app_instance.update_incident_status(i, "Acknowledged")).pack(pady=2)
         if status == "Acknowledged":
-            ctk.CTkButton(btn_frame, text="Close Incident", width=100,
-                          command=lambda i=incident_id: app_instance.update_incident_status(i, "Closed")).pack(pady=2)
+            ctk.CTkButton(btn_frame, text="Close Incident", width=100, command=lambda i=incident_id: app_instance.update_incident_status(i, "Closed")).pack(pady=2)
 
-
-# ... (rest of the file is unchanged) ...
 def toggle_theme():
     current = ctk.get_appearance_mode()
     ctk.set_appearance_mode("Light" if current == "Dark" else "Dark")
@@ -210,8 +230,7 @@ def update_summary_tab(app_instance, logs):
         label.pack(fill="x", padx=5, pady=2)
 
 def draw_event_graph(parent_frame, logs):
-    for widget in parent_frame.winfo_children():
-        widget.destroy()
+    for widget in parent_frame.winfo_children(): widget.destroy()
     if not logs:
         ctk.CTkLabel(parent_frame, text="No data to display.").pack(expand=True)
         return
