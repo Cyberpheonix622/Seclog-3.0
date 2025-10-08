@@ -61,17 +61,17 @@ class LogHandler:
             return [], Counter()
 
     def start_monitoring(self, update_callback):
-        # ... (This method is unchanged) ...
+        # ... (real-time monitoring start) ...
         if self.monitoring: return
         self.monitoring = True
         self.monitor_thread = threading.Thread(target=self._monitor_loop, args=(update_callback,), daemon=True)
         self.monitor_thread.start()
 
     def stop_monitoring(self):
-        # ... (This method is unchanged) ...
+        # ... (real-time monitoring stop) ...
         self.monitoring = False
 
-    # 🔹 UPDATED METHOD: Smarter logic to handle log rotation and clearing 🔹
+    # handle log rotation and clearing
     def _monitor_loop(self, update_callback):
         """Polls for new event log records with robust error handling for log rotation."""
         last_record_numbers = {}
@@ -140,7 +140,7 @@ class LogHandler:
             time.sleep(3)
 
     def save_logs_to_csv(self, logs_to_save):
-        # ... (This method is unchanged) ...
+        # ... (Saves logs to CSV files) ...
         if not logs_to_save:
             messagebox.showinfo("Export", "No logs to export.")
             return

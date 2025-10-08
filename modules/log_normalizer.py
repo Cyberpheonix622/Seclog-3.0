@@ -16,7 +16,6 @@ class LogNormalizer:
     def normalize(self, source_type, log_data):
         if source_type.lower() == "windows":
             return self._normalize_windows_log(log_data)
-        # ... (other types if you add them) ...
         else:
             return self._normalize_generic_log(log_data)
 
@@ -32,7 +31,7 @@ class LogNormalizer:
 
             return {
                 "timestamp": timestamp,
-                "logfile": log.get("logfile", "Unknown"),  # 👈 **CHANGE: Add logfile field**
+                "logfile": log.get("logfile", "Unknown"),
                 "source": log.get("SourceName", "Unknown"),
                 "event_id": str(log.get("EventID", "")),
                 "event_type": event_type,
@@ -43,7 +42,6 @@ class LogNormalizer:
         except Exception as e:
             return {"error": f"Normalization failed: {e}", "raw_log": log}
 
-    # ... (rest of the class is unchanged) ...
     def _normalize_generic_log(self, log):
         try:
             message = log.get("message") or log.get("msg") or str(log)

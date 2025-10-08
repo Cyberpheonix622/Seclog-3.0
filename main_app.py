@@ -66,7 +66,6 @@ class SecurityLogApp(ctk.CTk):
         Step 2: Query the entire database with the user's filters.
         """
         # Step 1: Sync latest logs. We fetch a limited number from each source.
-        # This is a quick operation to catch anything new since the app was opened.
         print("Syncing latest logs from Windows...")
         latest_logs, _ = self.log_handler.fetch_logs(log_sources, None, None, None)
         self.db_handler.insert_logs(latest_logs)
@@ -90,7 +89,7 @@ class SecurityLogApp(ctk.CTk):
         ui_components.update_summary_tab(self, self.filtered_logs)
         ui_components.draw_event_graph(self.graph_frame, self.filtered_logs)
 
-    # ... (rest of the methods: start_real_time, stop_real_time, save, reset) ...
+    # ... (start_real_time, stop_real_time, save, reset) ...
     def start_real_time_monitoring(self):
         """Handles the 'Start Real-Time' button click."""
         self.log_handler.start_monitoring(self._real_time_update_callback)
@@ -108,7 +107,6 @@ class SecurityLogApp(ctk.CTk):
     def _real_time_update_callback(self, new_logs, counts):
         """Callback for real-time monitor. Inserts new logs into DB and UI."""
         self.db_handler.insert_logs(new_logs)
-        # For real-time, we can just prepend the new logs to the current view
         self.filtered_logs = new_logs + self.filtered_logs
         self._update_ui_with_db_results(self.filtered_logs, counts)
         

@@ -22,13 +22,13 @@ class DatabaseHandler:
             CREATE TABLE IF NOT EXISTS logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp TEXT NOT NULL,
-                logfile TEXT,  -- 👈 **CHANGE: Add logfile column**
+                logfile TEXT,
                 source TEXT,
                 event_id TEXT,
                 event_type TEXT,
                 severity TEXT,
                 message TEXT,
-                UNIQUE(timestamp, logfile, source, event_id, message) -- 👈 **CHANGE: Update UNIQUE constraint**
+                UNIQUE(timestamp, logfile, source, event_id, message)
             )
         """)
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON logs (timestamp);")
@@ -49,7 +49,7 @@ class DatabaseHandler:
                 ))
         if not logs_to_insert: return
         try:
-            # 👈 **CHANGE: Update INSERT statement**
+            #Update INSERT statement
             cursor.executemany("""
                 INSERT OR IGNORE INTO logs (timestamp, logfile, source, event_id, event_type, severity, message)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -65,7 +65,7 @@ class DatabaseHandler:
         conditions = []
         params = []
 
-        # 👈 **CHANGE: Query the new 'logfile' column instead of 'source'**
+        # Query the new 'logfile' column instead of 'source'
         if log_sources and "All" not in log_sources:
             placeholders = ', '.join('?' for _ in log_sources)
             conditions.append(f"logfile IN ({placeholders})")
